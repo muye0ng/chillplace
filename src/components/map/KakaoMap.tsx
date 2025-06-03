@@ -7,13 +7,22 @@ export interface KakaoMapProps {
   center: { lat: number; lng: number };
   places: Array<{ id: string; lat: number; lng: number; name: string }>;
   onMarkerClick?: (id: string) => void;
+  onClickMap?: (lat: number, lng: number) => void; // 지도 클릭 시 콜백
 }
 
-const KakaoMap: React.FC<KakaoMapProps> = ({ center, places, onMarkerClick }) => {
+const KakaoMap: React.FC<KakaoMapProps> = ({ center, places, onMarkerClick, onClickMap }) => {
   return (
     <div className="w-full h-80 rounded-lg overflow-hidden">
       {/* 실제 카카오맵 렌더링 */}
-      <Map center={center} style={{ width: '100%', height: '100%' }} level={4}>
+      <Map
+        center={center}
+        style={{ width: '100%', height: '100%' }}
+        level={4}
+        onClick={onClickMap ? (map, mouseEvent) => {
+          const latlng = mouseEvent.latLng;
+          onClickMap(latlng.getLat(), latlng.getLng());
+        } : undefined}
+      >
         {/* 장소 마커 렌더링 */}
         {places.map((place) => (
           <MapMarker

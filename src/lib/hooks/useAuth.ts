@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 export interface AuthUser {
   id: string;
   email: string | null;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function useAuth() {

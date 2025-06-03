@@ -5,6 +5,7 @@ import Image from 'next/image';
 import ReplyForm from './ReplyForm';
 import ReplyList from './ReplyList';
 import { createReply } from '@/lib/supabase/replies';
+import useSWR from 'swr';
 
 export interface ReviewCardProps {
   review: {
@@ -22,12 +23,13 @@ export interface ReviewCardProps {
 
 const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, isHelpful }) => {
   const [showReplies, setShowReplies] = React.useState(false);
-  const [replyRefreshKey, setReplyRefreshKey] = React.useState(0);
+  // SWR mutate를 직접 사용하여 댓글 등록 후 목록 갱신
+  const { mutate } = useSWR(['replies', review.id]);
 
   // 댓글 등록 핸들러
   const handleReplySubmit = async (content: string) => {
     await createReply(review.id, content);
-    setReplyRefreshKey(k => k + 1); // 댓글 목록 새로고침
+    mutate(); // 댓글 목록 SWR 데이터 즉시 갱신
   };
 
   return (
@@ -86,7 +88,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpful, isHelpful })
       {showReplies && (
         <div className="mt-2 border-t pt-2">
           <ReplyForm onSubmit={handleReplySubmit} />
-          <ReplyList key={replyRefreshKey} reviewId={review.id} />
+          <ReplyList reviewId={review.id} />
         </div>
       )}
     </div>

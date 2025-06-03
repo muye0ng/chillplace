@@ -1,30 +1,12 @@
-// 이 파일은 로그인 페이지입니다.
-// 추후 소셜 로그인 버튼 및 인증 로직이 추가될 예정입니다.
-import React from 'react';
-import { signInWithProvider } from '@/lib/supabase/auth';
+// (auth) 로그인 페이지 템플릿
+// AuthForm 컴포넌트 사용, 추후 소셜 로그인/회원가입 연동 예정
+import AuthForm from '@/components/auth/AuthForm';
 
-const LoginPage = () => {
+export default function LoginPage() {
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-white">
-      <h1 className="text-2xl font-bold mb-4">로그인</h1>
-      {/* 소셜 로그인 버튼 영역 */}
-      <button
-        className="w-full py-2 px-4 bg-black text-white rounded-lg mb-2"
-        onClick={() => signInWithProvider('google')}
-      >
-        Google로 로그인
-      </button>
-      <button
-        className="w-full py-2 px-4 bg-yellow-400 text-black rounded-lg mb-2"
-        onClick={() => signInWithProvider('kakao')}
-      >
-        Kakao로 로그인
-      </button>
-      <button className="w-full py-2 px-4 bg-green-500 text-white rounded-lg opacity-50 cursor-not-allowed" disabled>
-        Naver로 로그인(미지원)
-      </button>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">로그인</h1>
+      <AuthForm />
     </main>
   );
-};
-
-export default LoginPage; 
+} 

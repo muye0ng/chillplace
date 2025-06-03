@@ -44,11 +44,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleEmailLogin} className="flex flex-col gap-4 p-6 bg-white rounded-2xl border border-gray-100 shadow-md max-w-sm w-full mx-auto animate-fade-in">
-      <h2 className="text-xl font-bold text-center mb-2">로그인 / 회원가입</h2>
+    <form onSubmit={handleEmailLogin} className="flex flex-col gap-4 p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-md max-w-sm w-full mx-auto animate-fade-in">
+      <h2 className="text-xl font-bold text-center mb-2 text-gray-900 dark:text-white">로그인 / 회원가입</h2>
       <input
         type="email"
-        className="border border-gray-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200"
+        className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
         placeholder="이메일"
         value={email}
         onChange={e => setEmail(e.target.value)}
@@ -56,27 +56,27 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
       />
       <input
         type="password"
-        className="border border-gray-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200"
+        className="border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
         placeholder="비밀번호"
         value={password}
         onChange={e => setPassword(e.target.value)}
         required
       />
-      <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded-lg transition" disabled={loading}>
+      <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition" disabled={loading}>
         {loading ? '로딩 중...' : '이메일로 로그인'}
       </button>
       <div className="flex items-center gap-2 my-2">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400">또는</span>
-        <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-600" />
+        <span className="text-xs text-gray-400 dark:text-gray-500">또는</span>
+        <div className="flex-1 h-px bg-gray-200 dark:bg-gray-600" />
       </div>
-      <button type="button" onClick={handleGoogleLogin} className="w-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold py-2 rounded-lg flex items-center justify-center gap-2 transition" disabled={loading}>
+      <button type="button" onClick={handleGoogleLogin} className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 font-bold py-2 rounded-lg flex items-center justify-center gap-2 transition" disabled={loading}>
         <img src="/icons/google.svg" alt="Google" className="w-5 h-5" /> Google로 로그인
       </button>
-      <button type="button" onClick={handleKakaoLogin} className="w-full bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold py-2 rounded-lg flex items-center justify-center gap-2 transition" disabled={loading}>
+      <button type="button" onClick={handleKakaoLogin} className="w-full bg-yellow-400 hover:bg-yellow-300 dark:bg-yellow-500 dark:hover:bg-yellow-400 text-gray-900 dark:text-gray-800 font-bold py-2 rounded-lg flex items-center justify-center gap-2 transition" disabled={loading}>
         <img src="/icons/kakao.svg" alt="Kakao" className="w-5 h-5" /> 카카오로 로그인
       </button>
-      {error && <div className="text-red-500 text-sm text-center mt-2">{error}</div>}
+      {error && <div className="text-red-500 dark:text-red-400 text-sm text-center mt-2">{error}</div>}
     </form>
   );
 };

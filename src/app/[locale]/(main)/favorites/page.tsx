@@ -14,21 +14,21 @@ const FavoritesPage = () => {
   const [snackbar, setSnackbar] = React.useState<{ open: boolean; message: string; type: 'success' | 'error' }>({ open: false, message: '', type: 'success' });
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen bg-white">
-      <h1 className="text-xl font-bold mb-4">즐겨찾기</h1>
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <h1 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">즐겨찾기</h1>
       {/* 즐겨찾기 리스트 영역 */}
       <div className="w-full max-w-md">
-        {loading && <div>불러오는 중...</div>}
-        {error && <div className="text-red-500">에러: {error}</div>}
-        {favorites.length === 0 && !loading && <div>아직 즐겨찾기한 장소가 없습니다.</div>}
+        {loading && <div className="text-blue-500 dark:text-blue-300 text-center py-8">불러오는 중...</div>}
+        {error && <div className="text-red-500 dark:text-red-300 text-center py-8">에러: {error}</div>}
+        {favorites.length === 0 && !loading && <div className="text-gray-400 dark:text-gray-500 text-center py-8">아직 즐겨찾기한 장소가 없습니다.</div>}
         {favorites.map((fav) => (
-          <div key={fav.id} className="flex items-center justify-between p-3 border-b">
+          <div key={fav.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl shadow mb-3 border border-gray-100 dark:border-gray-700">
             <div>
-              <div className="font-semibold">{fav.places?.name || fav.place_id}</div>
-              <div className="text-sm text-gray-500">{fav.places?.category}</div>
+              <div className="font-semibold text-gray-900 dark:text-white">{fav.places?.name || fav.place_id}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{fav.places?.category}</div>
             </div>
             <button
-              className="text-xs text-red-500 border border-red-300 rounded px-2 py-1 hover:bg-red-50"
+              className="text-xs text-red-500 dark:text-red-400 border border-red-300 dark:border-red-500 rounded px-3 py-1 hover:bg-red-50 dark:hover:bg-red-900 font-medium transition"
               onClick={async () => {
                 try {
                   await remove(fav.place_id);
@@ -48,9 +48,9 @@ const FavoritesPage = () => {
         current="favorites"
         onNavigate={(tab) => {
           if (tab === 'home') router.push('/ko');
-          if (tab === 'map') router.push('/ko/(main)/map');
-          if (tab === 'favorites') router.push('/ko/(main)/favorites');
-          if (tab === 'profile') router.push('/ko/(main)/profile');
+          if (tab === 'map') router.push('/ko/map');
+          if (tab === 'favorites') router.push('/ko/favorites');
+          if (tab === 'profile') router.push('/ko/profile');
         }}
       />
       {/* 스낵바 알림 */}

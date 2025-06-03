@@ -15,13 +15,21 @@ import Snackbar from '@/components/layout/Snackbar';
 import PlaceCard from '@/components/place/PlaceCard';
 import StoryBar, { StoryItem } from '@/components/ui/StoryBar';
 import Header from '@/components/layout/Header';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import OnboardingBanner from '@/components/ui/OnboardingBanner';
+import useSWR from 'swr';
+
+// SWR fetcher 함수
+const fetcher = async () => {
+  const { data, error } = await fetchAllPlaces();
+  if (error) throw error;
+  return data;
+};
 
 const MainFeedPage = () => {
-  // 장소 목록 상태
-  const [places, setPlaces] = useState<Place[]>([]);
+  // 장소 목록 상태 (SWR)
+  const { data: places = [], error, isLoading } = useSWR('places', fetcher, { refreshInterval: 5000 });
   const [voteCounts, setVoteCounts] = useState<Record<string, { like: number; no: number }>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   // 광고 모달 상태 및 숨김 로직
   const [showAd, setShowAd] = useState(false);
@@ -31,14 +39,9 @@ const MainFeedPage = () => {
   // 컴포넌트 마운트 시 Supabase에서 장소 목록 + 투표수 불러오기
   useEffect(() => {
     async function fetchData() {
-      setLoading(true);
-      setError(null);
       try {
-        const { data: placeData, error: placeError } = await fetchAllPlaces();
-        if (placeError) throw new Error(placeError.message);
-        setPlaces(placeData || []);
         // 장소 ID 목록 추출
-        const placeIds = (placeData || []).map((p: Place) => p.id);
+        const placeIds = (places || []).map((p: Place) => p.id);
         // 투표수 집계 fetch
         const { data: voteData, error: voteError } = await fetchVoteCountsByPlaceIds(placeIds);
         if (voteError) throw new Error(voteError.message);
@@ -53,13 +56,11 @@ const MainFeedPage = () => {
         }
         setVoteCounts(counts);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setLoading(false);
+        console.error('에러:', e instanceof Error ? e.message : String(e));
       }
     }
     fetchData();
-  }, []);
+  }, [places]);
 
   // 지도 중심 좌표(임시: 첫 번째 장소, 없으면 서울)
   const mapCenter = places.length > 0 ? { lat: places[0].latitude, lng: places[0].longitude } : { lat: 37.5665, lng: 126.9780 };
@@ -89,7 +90,7 @@ const MainFeedPage = () => {
   };
 
   const ad = {
-    title: '오늘 뭐하지? 오픈 이벤트',
+    title: '칠 플레이스 오픈 이벤트',
     content: '지금 가입하면 추첨을 통해 커피 기프티콘 증정!',
     imageUrl: '/ad/event.png',
     targetUrl: 'https://event.example.com',
@@ -97,22 +98,59 @@ const MainFeedPage = () => {
 
   // 스토리/이벤트/온보딩/공지 등 예시 데이터
   const stories: StoryItem[] = [
-    { id: 'event', label: '이벤트', colorFrom: 'pink-400', colorTo: 'yellow-400', onClick: () => alert('이벤트 클릭!') },
-    { id: 'onboarding', label: '온보딩', colorFrom: 'blue-400', colorTo: 'green-400', onClick: () => alert('온보딩 클릭!') },
-    { id: 'notice', label: '공지', colorFrom: 'purple-400', colorTo: 'pink-400', onClick: () => alert('공지 클릭!') },
+    { 
+      id: 'event', 
+      label: '이벤트', 
+      colorFrom: 'pink-400', 
+      colorTo: 'yellow-400', 
+      onClick: () => {
+        setSnackbar({ 
+          open: true, 
+          message: '🎉 칠 플레이스 오픈 이벤트! 지금 가입하면 커피 기프티콘 증정!', 
+          type: 'success' 
+        });
+      }
+    },
+    { 
+      id: 'onboarding', 
+      label: '가이드', 
+      colorFrom: 'blue-400', 
+      colorTo: 'green-400', 
+      onClick: () => {
+        localStorage.removeItem('onboarding_hidden_until');
+        window.location.reload();
+      }
+    },
+    { 
+      id: 'notice', 
+      label: '공지', 
+      colorFrom: 'purple-400', 
+      colorTo: 'pink-400', 
+      onClick: () => {
+        setSnackbar({ 
+          open: true, 
+          message: '📢 새로운 리뷰 시스템이 업데이트되었습니다!', 
+          type: 'success' 
+        });
+      }
+    },
   ];
 
   return (
-    <main className="flex flex-col items-center min-h-screen bg-gradient-to-b from-white to-blue-50">
+    <main className="flex flex-col items-center min-h-screen bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
       {/* 상단바 */}
-      <Header title="오늘 뭐하지?" />
+      <Header title="칠 플레이스" />
+      
+      {/* 온보딩 배너 */}
+      <OnboardingBanner />
+      
       {/* 스토리/이벤트 영역 */}
       <StoryBar stories={stories} />
       {/* 피드(카드형) */}
       <div className="w-full max-w-md flex flex-col gap-4 px-2 pb-32">
-        {loading && <div className="text-blue-500 text-center py-8">로딩 중...</div>}
-        {error && <div className="text-red-500 text-center py-8">에러: {error}</div>}
-        {!loading && places.length === 0 && <div className="text-gray-400 text-center py-8">주변에 등록된 장소가 없습니다.<br/>첫 리뷰의 주인공이 되어보세요!</div>}
+        {isLoading && <div className="text-blue-500 dark:text-blue-300 text-center py-8">로딩 중...</div>}
+        {error && <div className="text-red-500 dark:text-red-300 text-center py-8">에러: {error instanceof Error ? error.message : String(error)}</div>}
+        {!isLoading && places.length === 0 && <div className="text-gray-400 dark:text-gray-500 text-center py-8">주변에 등록된 장소가 없습니다.<br/>첫 리뷰의 주인공이 되어보세요!</div>}
         {places.map((place) => {
           const isFavorite = favorites.some((fav) => fav.place_id === place.id);
           return (
@@ -149,30 +187,34 @@ const MainFeedPage = () => {
                   setSnackbar({ open: true, message: '투표 중 오류가 발생했습니다.', type: 'error' });
                 }
               }}
-              onClick={() => router.push(`/ko/(main)/place/${place.id}`)}
+              onClick={() => router.push(`/ko/place/${place.id}`)}
             />
           );
         })}
       </div>
-      {/* 플로팅 버튼(리뷰/장소 등록 등) */}
+      {/* 플로팅 장소 등록 버튼 (우측 상단) */}
       <button
-        className="fixed bottom-24 right-6 bg-gradient-to-tr from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-2xl text-4xl z-50 transition-transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-200 animate-float"
-        onClick={() => router.push('/ko/(main)/place/new')}
+        className="fixed top-20 right-6 bg-gradient-to-tr from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500 dark:from-blue-800 dark:to-blue-700 dark:hover:from-blue-900 dark:hover:to-blue-800 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-xl z-50 transition-transform active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-200"
+        onClick={() => router.push('/ko/place/new')}
         aria-label="장소 등록"
         title="장소 등록"
       >
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="feather feather-plus">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
+      {/* 테마 토글 버튼 (우측 하단) */}
+      <div className="fixed bottom-24 right-6 z-50">
+        <ThemeToggle />
+      </div>
       {/* 지도 영역 */}
       <div className="w-full max-w-md mb-4">
         <KakaoMap
           center={mapCenter}
           places={mapPlaces}
           onMarkerClick={(id) => {
-            router.push(`/ko/(main)/place/${id}`);
+            router.push(`/ko/place/${id}`);
           }}
         />
       </div>
@@ -183,9 +225,9 @@ const MainFeedPage = () => {
         current="home"
         onNavigate={(tab) => {
           if (tab === 'home') router.push('/ko');
-          if (tab === 'map') router.push('/ko/(main)/map');
-          if (tab === 'favorites') router.push('/ko/(main)/favorites');
-          if (tab === 'profile') router.push('/ko/(main)/profile');
+          if (tab === 'map') router.push('/ko/map');
+          if (tab === 'favorites') router.push('/ko/favorites');
+          if (tab === 'profile') router.push('/ko/profile');
         }}
       />
       {/* 스낵바 알림 */}

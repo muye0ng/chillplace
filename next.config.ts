@@ -1,14 +1,15 @@
-// next-pwa 적용을 위한 설정 파일입니다.
-// 앱 코드/타입/함수는 절대 포함하지 않습니다.
-import withPWA from 'next-pwa';
+import nextPWA from "next-pwa";
 
-const nextConfig = {
-  // 추가적인 Next.js 설정은 여기에 작성
-};
-
-export default withPWA({
-  dest: 'public',
+const withPWA = nextPWA({
+  dest: "public",
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})(nextConfig);
+  disable: process.env.NODE_ENV === "development",
+});
+
+const nextConfig = {
+  reactStrictMode: true,
+  // 기타 옵션 추가
+};
+
+export default withPWA(nextConfig); 

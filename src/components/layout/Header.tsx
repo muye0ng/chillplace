@@ -12,7 +12,7 @@ export interface HeaderProps {
   onBack?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ title = '오늘 뭐하지?', showBack, onBack }) => {
+const Header: React.FC<HeaderProps> = ({ title = '칠 플레이스', showBack, onBack }) => {
   // 로그인 상태/유저명 표시
   const [user, setUser] = useState<SupabaseUser | null>(null);
   useEffect(() => {
@@ -20,23 +20,34 @@ const Header: React.FC<HeaderProps> = ({ title = '오늘 뭐하지?', showBack, 
   }, []);
 
   return (
-    <header className="w-full flex items-center h-12 px-4 bg-white border-b">
-      {showBack && (
-        <button className="mr-2" onClick={onBack} aria-label="뒤로가기">
-          ←
-        </button>
-      )}
-      <h1 className="text-lg font-bold flex-1 text-center">{title}</h1>
-      {/* 우측 메뉴/아이콘 영역 (로그인 상태/유저명) */}
-      <div className="w-auto flex items-center gap-2">
+    <header className="w-full flex items-center h-14 px-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 backdrop-blur-sm sticky top-0 z-30 transition-colors">
+      <div className="flex items-center gap-2">
+        {showBack && (
+          <button 
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" 
+            onClick={onBack} 
+            aria-label="뒤로가기"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+        <h1 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h1>
+      </div>
+      
+      {/* 우측 메뉴/아이콘 영역 */}
+      <div className="ml-auto flex items-center gap-3">
         {user ? (
           <>
             <NotificationBell userId={user.id} />
-            <span className="text-xs text-gray-700">{user.email}</span>
-            <button className="text-xs text-blue-500" onClick={signOut}>로그아웃</button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600 dark:text-gray-300 hidden sm:inline">{user.email}</span>
+              <button className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" onClick={signOut}>로그아웃</button>
+            </div>
           </>
         ) : (
-          <Link href="/ko/(auth)/login" className="text-xs text-blue-500">로그인</Link>
+          <Link href="/ko/login" className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">로그인</Link>
         )}
       </div>
     </header>

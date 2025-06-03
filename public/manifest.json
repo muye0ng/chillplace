@@ -1,12 +1,32 @@
 {
-  "name": "오늘 뭐하지?",
-  "short_name": "오늘뭐하지",
+  "name": "칠 플레이스",
+  "short_name": "칠플레이스",
   "description": "위치기반 실시간 리뷰 플랫폼",
   "lang": "ko",
   "start_url": "/ko",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#111827",
+  "theme_color": "#3b82f6",
+  "theme_color_dark": "#0f172a",
+  "categories": ["social", "lifestyle", "travel"],
+  "orientation": "portrait",
+  "display_override": ["window-controls-overlay"],
+  "screenshots": [
+    {
+      "src": "/screenshots/home-light.png",
+      "sizes": "1170x2532",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "홈 화면 (라이트 모드)"
+    },
+    {
+      "src": "/screenshots/home-dark.png",
+      "sizes": "1170x2532",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "홈 화면 (다크 모드)"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -17,6 +37,12 @@
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 } 

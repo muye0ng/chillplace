@@ -1,27 +1,27 @@
 // 알림 벨(아이콘+뱃지+드롭다운) 컴포넌트
 import React, { useEffect, useState, useRef } from 'react';
+import useSWR from 'swr';
 import { fetchNotifications, markNotificationRead, deleteNotification } from '@/lib/supabase/notifications';
-import type { Notification } from '@/types/database';
+// import type { Notification } from '@/types/database'; // 사용하지 않으므로 주석 처리 또는 삭제
 
 interface NotificationBellProps {
   userId: string;
 }
 
+// SWR fetcher 함수
+const fetcher = async (userId: string) => {
+  const { data } = await fetchNotifications(userId);
+  return data ?? [];
+};
+
 const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!userId) return;
-    fetchNotifications(userId).then(({ data }) => {
-      if (data) {
-        setNotifications(data);
-        setUnreadCount(data.filter(n => !n.is_read).length);
-      }
-    });
-  }, [userId, open]);
+  // SWR로 알림 목록 관리
+  const { data: notifications = [], mutate } = useSWR(['notifications', userId], () => fetcher(userId), {
+    refreshInterval: 10000, // 10초마다 자동 갱신
+  });
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
@@ -32,14 +32,15 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
+  // 알림 읽음 처리
   const handleRead = async (id: string) => {
     await markNotificationRead(id);
-    setNotifications(n => n.map(notif => notif.id === id ? { ...notif, is_read: true } : notif));
-    setUnreadCount(c => c - 1);
+    mutate(); // SWR 데이터 즉시 갱신
   };
+  // 알림 삭제 처리
   const handleDelete = async (id: string) => {
     await deleteNotification(id);
-    setNotifications(n => n.filter(notif => notif.id !== id));
+    mutate(); // SWR 데이터 즉시 갱신
   };
 
   return (
