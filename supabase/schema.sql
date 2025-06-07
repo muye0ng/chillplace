@@ -1,6 +1,6 @@
--- 사용자 프로필 (auth.users 확장)
+-- 사용자 프로필 (public.users 확장)
 CREATE TABLE profiles (
-  id UUID REFERENCES auth.users PRIMARY KEY, -- 사용자 ID (auth.users와 연동)
+  id UUID REFERENCES public.users PRIMARY KEY, -- NextAuth.js public.users와 연동
   username TEXT UNIQUE, -- 닉네임
   full_name TEXT, -- 전체 이름
   avatar_url TEXT, -- 프로필 이미지
@@ -32,6 +32,7 @@ CREATE TABLE reviews (
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE, -- 작성자
   place_id UUID REFERENCES places(id) ON DELETE CASCADE, -- 장소
   content TEXT NOT NULL CHECK (char_length(content) <= 50), -- 50자 제한
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), -- 1~5점 별점
   image_url TEXT, -- 선택적 이미지
   helpful_count INTEGER DEFAULT 0, -- 도움됨 수
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- 생성일
@@ -89,22 +90,42 @@ CREATE TABLE ad_impressions (
 );
 
 -- RLS(행 수준 보안) 정책
--- 프로필 보안
+-- 프로필 보안 (NextAuth.js 세션 기반으로 수정 필요)
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Anyone can view profiles" ON profiles FOR SELECT TO authenticated;
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (id::text = current_setting('request.jwt.claims')::json->>'sub');
 
 -- 리뷰 보안
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view reviews" ON reviews FOR SELECT TO authenticated;
-CREATE POLICY "Users can create own reviews" ON reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own reviews" ON reviews FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own reviews" ON reviews FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Users can create own reviews" ON reviews FOR INSERT WITH CHECK (user_id::text = current_setting('request.jwt.claims')::json->>'sub');
+CREATE POLICY "Users can update own reviews" ON reviews FOR UPDATE USING (user_id::text = current_setting('request.jwt.claims')::json->>'sub');
+CREATE POLICY "Users can delete own reviews" ON reviews FOR DELETE USING (user_id::text = current_setting('request.jwt.claims')::json->>'sub');
 
 -- 투표 보안
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own votes" ON votes FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own votes" ON votes FOR ALL USING (user_id::text = current_setting('request.jwt.claims')::json->>'sub');
 
 -- 즐겨찾기 보안
 ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own favorites" ON favorites FOR ALL USING (auth.uid() = user_id); 
+CREATE POLICY "Users can manage own favorites" ON favorites FOR ALL USING (user_id::text = current_setting('request.jwt.claims')::json->>'sub');
+
+-- NextAuth.js 사용자 생성 시 프로필 자동 생성 트리거 함수
+CREATE OR REPLACE FUNCTION public.handle_nextauth_user() 
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, username, full_name, avatar_url)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.name, split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.name, NEW.email),
+    COALESCE(NEW.image, '')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- NextAuth.js 사용자 생성 시 자동으로 프로필 생성하는 트리거
+CREATE TRIGGER on_nextauth_user_created
+  AFTER INSERT ON public.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_nextauth_user(); 

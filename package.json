@@ -8,16 +8,21 @@
     "start": "next start",
     "lint": "next lint",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "seed-data": "node scripts/seed-dummy-data.js",
+    "clear-data": "node scripts/clear-dummy-data.js"
   },
   "dependencies": {
+    "@auth/supabase-adapter": "^1.9.1",
     "@radix-ui/react-slot": "latest",
     "@supabase/supabase-js": "latest",
     "autoprefixer": "latest",
     "dayjs": "^1.11.13",
-    "framer-motion": "latest",
+    "dotenv": "^16.5.0",
+    "framer-motion": "^12.15.0",
     "lucide-react": "latest",
     "next": "15.3.3",
+    "next-auth": "^4.24.11",
     "next-intl": "latest",
     "next-pwa": "^5.6.0",
     "next-router-mock": "^1.0.2",
@@ -52,6 +57,7 @@
     "eslint-plugin-storybook": "^9.0.4",
     "playwright": "^1.52.0",
     "storybook": "^9.0.4",
+    "supabase": "^2.24.3",
     "typescript": "^5",
     "vitest": "^3.1.4"
   }

@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { useReviews } from '@/lib/hooks/useReviews';
 import ReviewCard from '@/components/review/ReviewCard';
 import ReviewForm from '@/components/review/ReviewForm';
-import { createReview, uploadReviewImage, fetchReviewAuthors, addReviewHelpful, removeReviewHelpful, isReviewHelpful } from '@/lib/supabase/reviews';
+import { createReview, uploadReviewImage, fetchReviewAuthors, addReviewHelpful, removeReviewHelpful, isReviewHelpful, createTestReviews, checkReviewsTableStructure, checkSupabaseConnection } from '@/lib/supabase/reviews';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import KakaoMap from '@/components/map/KakaoMap';
@@ -196,6 +196,27 @@ const PlaceDetailPage = () => {
       return false;
     }
   }
+
+  // 테스트 리뷰 생성 핸들러 (개발용)
+  const handleCreateTestReviews = async () => {
+    try {
+      await createTestReviews(placeId);
+      await mutateReviews(); // SWR 데이터 즉시 갱신
+      setSnackbar({ open: true, message: '테스트 리뷰가 생성되었습니다!', type: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: '테스트 리뷰 생성 중 오류가 발생했습니다.', type: 'error' });
+    }
+  };
+
+  // 테이블 구조 확인 핸들러 (개발용)
+  const handleCheckTableStructure = async () => {
+    await checkReviewsTableStructure();
+  };
+
+  // Supabase 연결 테스트 핸들러 (개발용)
+  const handleCheckConnection = async () => {
+    await checkSupabaseConnection();
+  };
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
@@ -455,9 +476,34 @@ const PlaceDetailPage = () => {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-8 text-center mb-16">
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
               {loading ? '리뷰를 불러오는 중...' : (ratingFilter ? `${ratingFilter}점 리뷰가 없습니다.` : '아직 리뷰가 없습니다.')}
             </p>
+            {/* 개발용 테스트 리뷰 생성 버튼 */}
+            {!loading && !ratingFilter && displayReviews.length === 0 && (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateTestReviews}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors"
+                  >
+                    📝 테스트 리뷰 생성하기
+                  </button>
+                  <button
+                    onClick={handleCheckTableStructure}
+                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
+                  >
+                    🔍 테이블 구조 확인
+                  </button>
+                </div>
+                <button
+                  onClick={handleCheckConnection}
+                  className="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition-colors"
+                >
+                  🔗 Supabase 연결 테스트
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

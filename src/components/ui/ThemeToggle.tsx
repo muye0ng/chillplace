@@ -1,7 +1,11 @@
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
-const ThemeToggle = () => {
+interface ThemeToggleProps {
+  variant?: 'mobile' | 'desktop';
+}
+
+const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'mobile' }) => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -45,11 +49,21 @@ const ThemeToggle = () => {
 
   const currentThemeIcon = themes.find(t => t.value === theme)?.icon || themes[0].icon;
 
+  // 데스크톱은 더 간단한 스타일, 모바일은 플로팅 스타일
+  const buttonStyles = variant === 'desktop' 
+    ? "p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors"
+    : "p-3 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md text-gray-800 dark:text-gray-200 transition-all hover:bg-white dark:hover:bg-gray-700 shadow-lg border border-gray-200/50 dark:border-gray-700/50";
+
+  // 팝업 위치: 데스크톱은 아래로, 모바일은 위로
+  const popupPositionStyles = variant === 'desktop'
+    ? "absolute top-full right-0 mt-2"
+    : "absolute bottom-full right-0 mb-2";
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-3 rounded-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md text-gray-800 dark:text-gray-200 transition-all hover:bg-white dark:hover:bg-gray-700 shadow-lg border border-gray-200/50 dark:border-gray-700/50"
+        className={buttonStyles}
         aria-label="테마 변경"
       >
         {currentThemeIcon}
@@ -64,7 +78,7 @@ const ThemeToggle = () => {
           />
           
           {/* 팝업 메뉴 */}
-          <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[140px] z-50 animate-slide-up">
+          <div className={`${popupPositionStyles} bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[140px] z-50 animate-slide-up`}>
             {themes.map((themeOption) => (
               <button
                 key={themeOption.value}

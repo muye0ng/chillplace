@@ -4,6 +4,7 @@ import "./globals.css";
 import Head from "next/head";
 import { SWRConfig } from 'swr';
 import { ThemeProvider } from 'next-themes';
+import NextAuthProvider from '@/components/providers/NextAuthProvider';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "칠 플레이스",
-  description: "위치기반 실시간 리뷰 플랫폼, 칠 플레이스",
+  description: "편안한 카페와 장소를 찾아보세요",
 };
 
 export default function RootLayout({
@@ -54,11 +55,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <SWRConfig value={{ revalidateOnFocus: false }}>
-            {children}
-          </SWRConfig>
-        </ThemeProvider>
+        <NextAuthProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <SWRConfig value={{ revalidateOnFocus: false }}>
+              {children}
+            </SWRConfig>
+          </ThemeProvider>
+        </NextAuthProvider>
       </body>
     </html>
   );
