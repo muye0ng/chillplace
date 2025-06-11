@@ -1,5 +1,5 @@
 import { useAuth } from './useAuth';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 export interface AuthGuardConfig {
   allowedActions: {
@@ -16,15 +16,15 @@ export function useAuthGuard() {
   const { user, loading } = useAuth();
   const [showSignupModal, setShowSignupModal] = useState(false);
 
-  // 비회원 허용 액션
-  const guestAllowedActions = {
+  // 비회원 허용 액션 - useMemo로 최적화
+  const guestAllowedActions = useMemo(() => ({
     viewMap: true,
     viewPlaceDetails: true,
     likePlace: false,
     writeReview: false,
     addFavorite: false,
     createPlace: false,
-  };
+  }), []);
 
   // 권한 체크 함수
   const checkPermission = useCallback((action: keyof AuthGuardConfig['allowedActions']): boolean => {
@@ -37,7 +37,7 @@ export function useAuthGuard() {
       // 비회원은 제한된 액션만 허용
       return guestAllowedActions[action];
     }
-  }, [user, loading]);
+  }, [user, loading, guestAllowedActions]);
 
   // 권한이 필요한 액션을 실행하려 할 때 호출
   const requireAuth = useCallback((action: keyof AuthGuardConfig['allowedActions'], callback?: () => void): boolean => {

@@ -16,11 +16,10 @@ export interface PlaceCardProps {
   onVote: (type: 'like' | 'no') => void;
   userVote?: 'like' | 'no';
   isFavorite?: boolean; // 즐겨찾기 여부
-  onToggleFavorite?: () => void; // 즐겨찾기 토글 핸들러
   onClick?: () => void; // 카드 클릭 시 핸들러(상세 이동)
 }
 
-const PlaceCard: React.FC<PlaceCardProps> = ({ place, onVote, userVote, isFavorite, onToggleFavorite, onClick }) => {
+const PlaceCard: React.FC<PlaceCardProps> = ({ place, onVote, userVote, isFavorite, onClick }) => {
   return (
     <div
       className="bg-white rounded-2xl shadow-none border border-gray-100 mb-5 overflow-hidden relative cursor-pointer group transition hover:shadow-xl hover:-translate-y-1"
@@ -49,27 +48,8 @@ const PlaceCard: React.FC<PlaceCardProps> = ({ place, onVote, userVote, isFavori
           </div>
           <div className="text-lg font-bold text-white drop-shadow-sm truncate">{place.name}</div>
         </div>
-        {/* 즐겨찾기 하트 버튼 (우상단, 반투명) */}
-        <button
-          className="absolute top-3 right-3 text-white/90 hover:scale-110 transition z-10 backdrop-blur-sm bg-black/30 rounded-full p-1"
-          aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
-          onClick={e => {
-            e.stopPropagation();
-            if (onToggleFavorite) onToggleFavorite();
-          }}
-        >
-          {isFavorite ? (
-            <svg width="26" height="26" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-          ) : (
-            <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-          )}
-        </button>
       </div>
-      {/* 하단 투표/즐겨찾기 버튼 영역 */}
+      {/* 하단 투표 버튼 영역 */}
       <div className="flex items-center justify-between px-4 py-2 bg-white/80 backdrop-blur-sm border-t border-gray-100">
         <div className="flex gap-2">
           <button
@@ -91,6 +71,12 @@ const PlaceCard: React.FC<PlaceCardProps> = ({ place, onVote, userVote, isFavori
             <span>👎</span> {place.noCount}
           </button>
         </div>
+        {isFavorite && (
+          <div className="flex items-center gap-1 text-yellow-500 text-sm">
+            <span>⭐</span>
+            <span className="font-medium">즐겨찾기</span>
+          </div>
+        )}
       </div>
     </div>
   );

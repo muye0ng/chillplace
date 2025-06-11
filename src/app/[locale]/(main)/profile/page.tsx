@@ -32,10 +32,10 @@ const ProfilePage = () => {
       setProfile(profile);
       setLoading(false);
       // 내 리뷰 불러오기
-      if (profile) {
+      if (profile && (profile as Profile)?.id) {
         setReviewsLoading(true);
         setReviewsError(null);
-        const { data, error: reviewError } = await fetchMyReviews(profile.id);
+        const { data, error: reviewError } = await fetchMyReviews((profile as Profile).id);
         if (reviewError) setReviewsError(reviewError.message);
         setMyReviews(data || []);
         setReviewsLoading(false);

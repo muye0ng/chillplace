@@ -4,11 +4,17 @@ import dynamic from 'next/dynamic';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import React, { useState, useEffect } from 'react';
+import SignupRedirectButton from '@/components/SignupRedirectButton';
 
 // 동적 import로 hydration 오류 방지
 const SwipeCardStack = dynamic(() => import('@/components/ui/SwipeCardStack'), { 
   ssr: false,
   loading: () => <div className="flex justify-center items-center h-64">로딩 중...</div>
+});
+
+const InteractiveMap = dynamic(() => import('@/components/InteractiveMap'), { 
+  ssr: false,
+  loading: () => <div className="flex justify-center items-center h-64">지도 로딩 중...</div>
 });
 
 // 더미 장소 데이터
@@ -19,7 +25,9 @@ const dummyPlaces = [
     category: '카페',
     imageUrl: 'https://picsum.photos/400/300?random=1',
     distance: '150m',
-    description: '조용한 분위기의 카페입니다.'
+    description: '조용한 분위기의 카페입니다.',
+    lat: 37.498004,
+    lng: 127.02762
   },
   {
     id: '2',
@@ -27,8 +35,90 @@ const dummyPlaces = [
     category: '카페',
     imageUrl: 'https://picsum.photos/400/300?random=2',
     distance: '230m',
-    description: '합리적인 가격의 커피전문점입니다.'
+    description: '합리적인 가격의 커피전문점입니다.',
+    lat: 37.500350,
+    lng: 127.031450
   },
+  {
+    id: '3',
+    name: '도서관 카페',
+    category: '카페',
+    imageUrl: 'https://picsum.photos/400/300?random=3',
+    distance: '310m',
+    description: '조용히 독서할 수 있는 공간입니다.',
+    lat: 37.502100,
+    lng: 127.029800
+  },
+  {
+    id: '4',
+    name: '맛집 삼계탕',
+    category: '음식점',
+    imageUrl: 'https://picsum.photos/400/300?random=4',
+    distance: '420m',
+    description: '전통 삼계탕 전문점입니다.',
+    lat: 37.496500,
+    lng: 127.025400
+  },
+  {
+    id: '5',
+    name: '강남 CGV',
+    category: '문화',
+    imageUrl: 'https://picsum.photos/400/300?random=5',
+    distance: '280m',
+    description: '최신 영화를 볼 수 있는 멀티플렉스입니다.',
+    lat: 37.499200,
+    lng: 127.026800
+  },
+  {
+    id: '6',
+    name: '현대백화점',
+    category: '쇼핑',
+    imageUrl: 'https://picsum.photos/400/300?random=6',
+    distance: '320m',
+    description: '프리미엄 쇼핑몰입니다.',
+    lat: 37.497800,
+    lng: 127.027500
+  },
+  {
+    id: '7',
+    name: '피트니스센터',
+    category: '스포츠',
+    imageUrl: 'https://picsum.photos/400/300?random=7',
+    distance: '180m',
+    description: '24시간 운영되는 헬스장입니다.',
+    lat: 37.501500,
+    lng: 127.030200
+  },
+  {
+    id: '8',
+    name: '강남세브란스병원',
+    category: '병원',
+    imageUrl: 'https://picsum.photos/400/300?random=8',
+    distance: '450m',
+    description: '종합병원입니다.',
+    lat: 37.494800,
+    lng: 127.023600
+  },
+  {
+    id: '9',
+    name: '파스타 레스토랑',
+    category: '음식점',
+    imageUrl: 'https://picsum.photos/400/300?random=9',
+    distance: '200m',
+    description: '정통 이탈리안 파스타 전문점입니다.',
+    lat: 37.503200,
+    lng: 127.028900
+  },
+  {
+    id: '10',
+    name: '올리브영',
+    category: '쇼핑',
+    imageUrl: 'https://picsum.photos/400/300?random=10',
+    distance: '120m',
+    description: '화장품과 생활용품 매장입니다.',
+    lat: 37.499800,
+    lng: 127.025800
+  }
 ];
 
 export default function HomePage() {
@@ -37,10 +127,25 @@ export default function HomePage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false); // 로그인 유도 팝업
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | undefined>(dummyPlaces[0]?.id);
+  const [selectedCategory, setSelectedCategory] = useState<string>('전체');
   // 회원탈퇴 관련 상태
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 카테고리별 필터링된 장소 목록
+  const filteredPlaces = selectedCategory === '전체' 
+    ? dummyPlaces 
+    : dummyPlaces.filter(place => place.category === selectedCategory);
+
+  // 카테고리 변경 시 첫 번째 장소로 선택 초기화
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    const filtered = category === '전체' ? dummyPlaces : dummyPlaces.filter(place => place.category === category);
+    setSelectedPlaceId(filtered[0]?.id);
+  };
 
   // 반응형 체크
   useEffect(() => {
@@ -52,6 +157,11 @@ export default function HomePage() {
     window.addEventListener('resize', checkDevice);
     return () => window.removeEventListener('resize', checkDevice);
   }, []);
+
+  // 로그인 모달 상태 추적
+  useEffect(() => {
+    console.log('Login modal state changed:', showLoginModal);
+  }, [showLoginModal]);
 
   // 로그아웃 처리
   const handleLogout = async () => {
@@ -112,8 +222,10 @@ export default function HomePage() {
 
   // 권한이 필요한 액션들
   const handleSwipeLeft = async (placeId: string) => {
+    console.log('Swipe left triggered, session:', session);
     if (!session) {
-      setShowLoginModal(true);
+      console.log('No session, showing auth prompt');
+      setShowAuthPrompt(true);
       return false;
     }
     console.log('Dislike:', placeId);
@@ -121,8 +233,10 @@ export default function HomePage() {
   };
 
   const handleSwipeRight = async (placeId: string) => {
+    console.log('Swipe right triggered, session:', session);
     if (!session) {
-      setShowLoginModal(true);
+      console.log('No session, showing auth prompt');
+      setShowAuthPrompt(true);
       return false;
     }
     console.log('Like:', placeId);
@@ -131,17 +245,26 @@ export default function HomePage() {
 
   const handleCardTap = (placeId: string) => {
     console.log('Card tapped:', placeId);
+    setSelectedPlaceId(placeId);
+  };
+
+  const handleMarkerClick = (placeId: string) => {
+    console.log('Marker clicked:', placeId);
+    setSelectedPlaceId(placeId);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-800">
+      {/* 테스트 버튼 - 맨 위에 표시 */}
+      <SignupRedirectButton />
+      
       {/* 상단 네비게이션 */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl shadow-lg border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* 로고 */}
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 칠 플레이스
               </h1>
             </div>
@@ -201,58 +324,105 @@ export default function HomePage() {
       <main className="flex-1">
         {isDesktop ? (
           // PC 레이아웃: 카드 + 지도 분할 화면
-          <div className="h-screen grid lg:grid-cols-2 gap-8 p-8">
-            {/* 왼쪽: 카드 스택 영역 */}
-            <div className="flex flex-col items-center justify-center">
-              <div className="w-full max-w-md">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
-                  새로운 장소 발견하기
-                </h2>
-                <SwipeCardStack 
-                  places={dummyPlaces}
-                  onSwipeLeft={handleSwipeLeft}
-                  onSwipeRight={handleSwipeRight}
-                  onCardTap={handleCardTap}
-                  isDesktop={true}
-                />
+          <div className="h-[calc(100vh-4rem)] flex gap-8 p-8">
+            {/* 왼쪽: 카드 스택 영역 (62%) */}
+            <div className="flex-[1.618] flex flex-col">
+              <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl p-8 shadow-lg border border-white/20 h-full">
+                <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+                  {/* 헤더 */}
+                  <div className="text-center mb-6">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                      새로운 장소 발견하기
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      주변의 특별한 장소들을 찾아보세요
+                    </p>
+                  </div>
+                  
+                  {/* 심플한 카테고리 필터 */}
+                  <div className="mb-4">
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {[
+                        { name: '전체', color: 'from-purple-500 to-pink-500' },
+                        { name: '카페', color: 'from-amber-500 to-orange-500' },
+                        { name: '음식점', color: 'from-red-500 to-rose-500' },
+                        { name: '쇼핑', color: 'from-green-500 to-emerald-500' },
+                        { name: '문화', color: 'from-indigo-500 to-purple-500' },
+                        { name: '스포츠', color: 'from-blue-500 to-cyan-500' },
+                        { name: '병원', color: 'from-teal-500 to-green-500' }
+                      ].map((category) => (
+                        <button
+                          key={category.name}
+                          onClick={() => handleCategoryChange(category.name)}
+                          className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
+                            selectedCategory === category.name
+                              ? `bg-gradient-to-r ${category.color} text-white shadow-md border-transparent`
+                              : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                          }`}
+                        >
+                          {category.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 카드 스택 영역 */}
+                  <div className="flex-1 flex items-center justify-center">
+                    <SwipeCardStack 
+                      places={filteredPlaces}
+                      onSwipeLeft={handleSwipeLeft}
+                      onSwipeRight={handleSwipeRight}
+                      onCardTap={handleCardTap}
+                      isDesktop={true}
+                      selectedPlaceId={selectedPlaceId}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* 오른쪽: 지도 영역 */}
-            <div className="relative bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg">
-              {/* 지도 플레이스홀더 */}
-              <div className="h-full flex flex-col items-center justify-center p-8">
-                <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center mb-6">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                    <circle cx="12" cy="10" r="3"/>
-                  </svg>
+            {/* 오른쪽: 지도 영역 (38%) */}
+            <div className="flex-1 flex flex-col">
+              <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl rounded-3xl shadow-lg border border-white/20 h-full flex flex-col overflow-hidden">
+                {/* 지도 헤더 */}
+                <div className="p-6 border-b border-white/20">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+                    <span className="text-2xl mr-3">🗺️</span>
+                    주변 지도
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    {filteredPlaces.length}개의 장소가 있습니다
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  지도 뷰
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
-                  주변 장소들의 위치를 지도에서 확인하세요
-                </p>
-                <button 
-                  onClick={() => router.push('/ko/map')}
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white font-medium rounded-xl transition-colors"
-                >
-                  지도 보기
-                </button>
-              </div>
-
-              {/* 지도 통계 */}
-              <div className="absolute bottom-6 left-6 right-6">
-                <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-4">
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">{dummyPlaces.length}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">주변 장소</div>
+                
+                {/* 지도 */}
+                <div className="flex-1 relative">
+                  <InteractiveMap 
+                    places={filteredPlaces}
+                    selectedPlaceId={selectedPlaceId}
+                    onMarkerClick={handleMarkerClick}
+                    className="w-full h-full"
+                  />
+                </div>
+                
+                {/* 지도 통계 */}
+                <div className="p-6 border-t border-white/20">
+                  <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                    <span className="text-lg mr-2">📍</span>
+                    주변 정보
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        {filteredPlaces.length}
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">장소</div>
                     </div>
-                    <div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">2.5km</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">반경 내</div>
+                    <div className="text-center p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl">
+                      <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                        2.5km
+                      </div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">반경</div>
                     </div>
                   </div>
                 </div>
@@ -263,11 +433,12 @@ export default function HomePage() {
           // 모바일 레이아웃: 카드만
           <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
             <SwipeCardStack 
-              places={dummyPlaces}
+              places={filteredPlaces}
               onSwipeLeft={handleSwipeLeft}
               onSwipeRight={handleSwipeRight}
               onCardTap={handleCardTap}
               isDesktop={false}
+              selectedPlaceId={selectedPlaceId}
             />
           </div>
         )}
@@ -275,8 +446,11 @@ export default function HomePage() {
 
       {/* 로그인 모달 */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 flex items-center justify-center z-[9998] p-4">
+          {/* 배경 블러 */}
+          <div className="absolute inset-0 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md" />
+          {/* 컨텐츠 */}
+          <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-md border border-white/20 dark:border-gray-700/30">
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 간편 로그인
@@ -289,7 +463,7 @@ export default function HomePage() {
             <div className="space-y-3">
               {/* Google 로그인 */}
               <button
-                onClick={() => signIn('google')}
+                onClick={() => signIn('google', { callbackUrl: '/ko' })}
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -303,7 +477,7 @@ export default function HomePage() {
 
               {/* 네이버 로그인 */}
               <button
-                onClick={() => signIn('naver')}
+                onClick={() => signIn('naver', { callbackUrl: '/ko' })}
                 className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-[#03C75A] hover:bg-[#02B351] transition-colors"
               >
                 <div className="w-5 h-5 mr-3 bg-white rounded-sm flex items-center justify-center">
@@ -314,10 +488,7 @@ export default function HomePage() {
 
               {/* 카카오 로그인 */}
               <button
-                onClick={() => signIn('kakao', { 
-                  redirect: false,
-                  callbackUrl: '/ko'
-                })}
+                onClick={() => signIn('kakao', { callbackUrl: '/ko' })}
                 className="w-full flex items-center justify-center px-4 py-3 rounded-lg bg-[#FEE500] hover:bg-[#FCDC00] transition-colors"
               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="#000000">
@@ -333,6 +504,47 @@ export default function HomePage() {
             >
               닫기
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 로그인 유도 팝업 */}
+      {showAuthPrompt && (
+        <div className="fixed inset-0 flex items-center justify-center z-[9999] p-4">
+          {/* 배경 블러 */}
+          <div className="absolute inset-0 bg-white/30 dark:bg-gray-900/30 backdrop-blur-md" />
+          {/* 컨텐츠 */}
+          <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-white/20 dark:border-gray-700/30">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                로그인이 필요해요
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
+                장소에 좋아요를 표시하려면<br />로그인이 필요합니다
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowAuthPrompt(false);
+                    setShowLoginModal(true);
+                  }}
+                  className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  로그인하기
+                </button>
+                <button
+                  onClick={() => setShowAuthPrompt(false)}
+                  className="w-full px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                >
+                  나중에
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

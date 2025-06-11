@@ -2,10 +2,19 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense, useEffect } from 'react';
 
-export default function AuthError() {
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+
+  // OAuth 계정 생성 오류인 경우 회원가입 페이지로 즉시 리다이렉트
+  useEffect(() => {
+    if (error === 'OAuthCreateAccount') {
+      console.log('🚀 OAuth 계정 생성 오류 감지 - 회원가입 페이지로 리다이렉트');
+      window.location.href = '/signup';
+    }
+  }, [error]);
 
   const getErrorMessage = (error: string | null) => {
     switch (error) {
@@ -19,6 +28,8 @@ export default function AuthError() {
         return '인증 중 알 수 없는 오류가 발생했습니다.';
       case 'Callback':
         return 'OAuth 콜백 처리 중 오류가 발생했습니다. 네이버 개발자센터 설정을 확인해주세요.';
+      case 'OAuthCreateAccount':
+        return '회원가입 페이지로 이동 중...';
       default:
         return error ? `오류: ${error}` : '알 수 없는 인증 오류가 발생했습니다.';
     }
@@ -48,7 +59,7 @@ export default function AuthError() {
             <pre className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
               {JSON.stringify({ 
                 error,
-                url: window.location.href,
+                url: typeof window !== 'undefined' ? window.location.href : 'SSR',
                 timestamp: new Date().toISOString()
               }, null, 2)}
             </pre>
@@ -72,5 +83,20 @@ export default function AuthError() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-300">로딩 중...</p>
+        </div>
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   );
 } 

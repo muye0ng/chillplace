@@ -18,6 +18,7 @@ interface SwipeCardStackProps {
   onCardTap?: (placeId: string) => void;
   maxVisible?: number;
   isDesktop?: boolean;
+  selectedPlaceId?: string;
 }
 
 const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
@@ -26,7 +27,8 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
   onSwipeRight,
   onCardTap,
   maxVisible = 3,
-  isDesktop = false
+  isDesktop = false,
+  selectedPlaceId
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [removedCards, setRemovedCards] = useState<Set<string>>(new Set());
@@ -35,7 +37,15 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
     .filter(place => !removedCards.has(place.id))
     .slice(currentIndex, currentIndex + maxVisible);
 
-  const handleSwipe = useCallback(async (direction: 'left' | 'right', placeId: string) => {
+  // 현재 탑 카드가 selectedPlaceId와 다르면 onCardTap 호출하여 동기화
+  React.useEffect(() => {
+    const topCard = visiblePlaces[0];
+    if (topCard && topCard.id !== selectedPlaceId) {
+      onCardTap?.(topCard.id);
+    }
+  }, [currentIndex, visiblePlaces, selectedPlaceId, onCardTap]);
+
+  const handleSwipe = useCallback(async (direction: 'left' | 'right', placeId: string): Promise<boolean> => {
     let success = false;
     
     try {
@@ -60,6 +70,8 @@ const SwipeCardStack: React.FC<SwipeCardStackProps> = ({
       }, 100);
     }
     // 실패시에는 카드가 그대로 유지됨
+    
+    return success; // boolean 값 반환
   }, [onSwipeLeft, onSwipeRight]);
 
   const handleCardTap = useCallback((placeId: string) => {

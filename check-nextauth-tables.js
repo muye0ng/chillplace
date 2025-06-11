@@ -1,62 +1,44 @@
-const { createClient } = require("@supabase/supabase-js");
+const { Client } = require("pg");
 require("dotenv").config();
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+async function checkNextAuthTables() {
+  console.log("🔍 next_auth 스키마 테이블 직접 확인");
 
-async function checkTables() {
-  console.log("=== NextAuth 테이블 존재 확인 ===");
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+  });
 
-  const tables = [
-    "users",
-    "accounts",
-    "sessions",
-    "profiles",
-    "verification_tokens",
-  ];
-
-  for (const table of tables) {
-    try {
-      const { data, error } = await supabase.from(table).select("*").limit(1);
-      if (error) {
-        console.log(`❌ ${table} 테이블: 오류 - ${error.message}`);
-      } else {
-        console.log(`✅ ${table} 테이블: 존재 (${data.length}개 행)`);
-      }
-    } catch (err) {
-      console.log(`❌ ${table} 테이블: 예외 - ${err.message}`);
-    }
-  }
-
-  // 수동으로 사용자 생성 테스트
-  console.log("\n=== 수동 사용자 생성 테스트 ===");
   try {
-    const testUser = {
-      name: "테스트 사용자",
-      email: "test@example.com",
-      image: "https://example.com/avatar.jpg",
-    };
+    await client.connect();
 
-    const { data, error } = await supabase
-      .from("users")
-      .insert([testUser])
-      .select()
-      .single();
+    // next_auth.users 테이블 확인
+    console.log("\n📊 next_auth.users:");
+    const usersResult = await client.query("SELECT * FROM next_auth.users");
+    console.log("users 데이터:", usersResult.rows);
 
-    if (error) {
-      console.log("❌ 사용자 생성 실패:", error.message);
-    } else {
-      console.log("✅ 사용자 생성 성공:", data);
+    // next_auth.accounts 테이블 확인
+    console.log("\n📊 next_auth.accounts:");
+    const accountsResult = await client.query(
+      "SELECT * FROM next_auth.accounts"
+    );
+    console.log("accounts 데이터:", accountsResult.rows);
 
-      // 생성된 테스트 사용자 삭제
-      await supabase.from("users").delete().eq("id", data.id);
-      console.log("🗑️ 테스트 사용자 삭제 완료");
-    }
-  } catch (err) {
-    console.log("❌ 사용자 생성 예외:", err.message);
+    // next_auth.sessions 테이블 확인
+    console.log("\n📊 next_auth.sessions:");
+    const sessionsResult = await client.query(
+      "SELECT * FROM next_auth.sessions"
+    );
+    console.log("sessions 데이터:", sessionsResult.rows);
+
+    // public.profiles 테이블 확인
+    console.log("\n📊 public.profiles:");
+    const profilesResult = await client.query("SELECT * FROM public.profiles");
+    console.log("profiles 데이터:", profilesResult.rows);
+  } catch (error) {
+    console.error("에러:", error);
+  } finally {
+    await client.end();
   }
 }
 
-checkTables().catch(console.error);
+checkNextAuthTables();

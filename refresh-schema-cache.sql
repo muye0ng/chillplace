@@ -1,31 +1,36 @@
 -- PostgREST 스키마 캐시 강제 새로고침
+-- migrate-to-public.sql 실행 후 이것도 실행하세요
 
--- 1. 더미 테이블 생성 및 삭제 (PostgREST 스키마 캐시 갱신 트리거)
-CREATE TABLE IF NOT EXISTS temp_schema_refresh (id INTEGER);
-DROP TABLE IF EXISTS temp_schema_refresh;
-
--- 2. NOTIFY를 사용한 PostgREST 리로드 시그널
+-- 1. PostgREST 스키마 캐시 새로고침 (Supabase 전용)
 NOTIFY pgrst, 'reload schema';
 
--- 3. accounts 테이블 스키마 확인
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'accounts' 
-AND table_schema = 'public'
-AND column_name LIKE '%refresh%'
-ORDER BY ordinal_position;
+-- 2. 현재 스키마 상태 확인
+SELECT schema_name 
+FROM information_schema.schemata 
+WHERE schema_name NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+ORDER BY schema_name;
 
--- 4. 컬럼 존재 확인
+-- 3. public 스키마의 NextAuth 테이블 확인
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public' 
+AND table_name IN ('users', 'accounts', 'sessions', 'verification_tokens')
+ORDER BY table_name;
+
+-- 4. 외래키 관계 확인
 SELECT 
-  CASE 
-    WHEN EXISTS (
-      SELECT 1 FROM information_schema.columns 
-      WHERE table_name = 'accounts' 
-      AND column_name = 'refresh_token_expires_in'
-    ) 
-    THEN '✅ refresh_token_expires_in 컬럼 존재함'
-    ELSE '❌ refresh_token_expires_in 컬럼 없음'
-  END as result;
+    tc.constraint_name,
+    tc.table_name,
+    kcu.column_name,
+    ccu.table_name AS foreign_table_name,
+    ccu.column_name AS foreign_column_name
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kcu
+    ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage AS ccu
+    ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY'
+    AND tc.table_schema = 'public'
+    AND (tc.table_name = 'accounts' OR tc.table_name = 'sessions');
 
--- 완료 메시지
-SELECT 'PostgREST 스키마 캐시 새로고침 완료!' as message; 
+SELECT '스키마 캐시 새로고침 완료!' as result; 

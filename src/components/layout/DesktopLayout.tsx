@@ -11,8 +11,8 @@ interface DesktopLayoutProps {
     distance: string;
     description?: string;
   }>;
-  onSwipeLeft: (placeId: string) => void;
-  onSwipeRight: (placeId: string) => void;
+  onSwipeLeft: (placeId: string) => Promise<boolean> | boolean;
+  onSwipeRight: (placeId: string) => Promise<boolean> | boolean;
   onCardTap: (placeId: string) => void;
   loading: boolean;
   error: Error | string | null;

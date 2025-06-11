@@ -1,17 +1,21 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import Image from 'next/image';
 
+interface Place {
+  id: string;
+  name: string;
+  category: string;
+  imageUrl: string;
+  distance: string;
+  description?: string;
+}
+
 interface SwipeCardProps {
-  place: {
-    id: string;
-    name: string;
-    category: string;
-    imageUrl: string;
-    distance: string;
-    description?: string;
-  };
-  onSwipe: (direction: 'left' | 'right', placeId: string) => Promise<boolean> | boolean;
+  place: Place;
+  onSwipe: (direction: 'left' | 'right', placeId: string) => Promise<boolean>;
   onTap?: (placeId: string) => void;
   isTopCard?: boolean;
   zIndex: number;
@@ -46,8 +50,6 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
     return isValidImageUrl(place.imageUrl) ? place.imageUrl : '/icons/icon-192x192.png';
   };
 
-  const [imageSrc, setImageSrc] = useState(getImageSrc());
-  
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -150, 0, 150, 200], [0, 1, 1, 1, 0]);
@@ -115,12 +117,6 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
     }
   };
 
-  const handleTap = () => {
-    // 드래그 중이거나 직후에는 탭 이벤트 무시
-    if (isDragging || !isTopCard || !onTap) return;
-    onTap(place.id);
-  };
-
   // 키보드 지원
   useEffect(() => {
     if (!isTopCard) return;
@@ -157,39 +153,54 @@ const SwipeCard: React.FC<SwipeCardProps> = ({
 
   // 이미지 로드 에러 핸들러
   const handleImageError = () => {
-    setImageSrc('/icons/icon-192x192.png');
+    setExitX(0);
+    setIsExiting(false);
+    setIsDragging(false);
   };
 
   return (
     <motion.div
       ref={cardRef}
-      className="absolute inset-0 cursor-grab active:cursor-grabbing select-none"
+      className={`absolute inset-0 cursor-grab active:cursor-grabbing select-none ${
+        !isTopCard ? 'pointer-events-none' : ''
+      }`}
       style={{ 
         x,
         rotate,
         opacity,
         zIndex,
-        backgroundColor
+        backgroundColor,
+        scale: isTopCard ? 1 : 0.95 - (2 - zIndex) * 0.05,
+        y: isTopCard ? 0 : (3 - zIndex) * 8,
       }}
       drag={isTopCard ? "x" : false} // PC/모바일 모두 드래그 가능
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.7}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      animate={isExiting ? { x: exitX, opacity: 0 } : {}}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      animate={!isDragging ? { 
+        x: isExiting ? exitX : 0,
+        opacity: isExiting ? 0 : 1,
+        rotate: isExiting ? (exitX > 0 ? 30 : -30) : 0,
+      } : {}}
+      transition={{ 
+        type: "spring", 
+        stiffness: 300, 
+        damping: 30,
+        duration: isExiting ? 0.3 : 0.1
+      }}
       whileDrag={{ scale: 1.05 }}
       initial={{ scale: 0.95, opacity: 0, y: 50 }}
       whileInView={{ scale: 1, opacity: 1, y: 0 }}
+      onClick={!isDragging && !isExiting ? () => onTap?.(place.id) : undefined}
     >
       <div 
         className="w-full h-full bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700"
-        onClick={handleTap}
       >
         {/* 상단 이미지 영역 */}
         <div className="relative h-[60%] overflow-hidden">
           <Image
-            src={imageSrc}
+            src={getImageSrc()}
             alt={place.name}
             fill
             className="object-cover"

@@ -3,8 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { getCurrentUser, signOut } from '@/lib/supabase/auth';
 import Link from 'next/link';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 import NotificationBell from './NotificationBell';
+
+// NextAuth.js 사용자 타입 정의
+interface User {
+  id: string;
+  email: string | null;
+  name: string | null;
+  image: string | null;
+}
 
 export interface HeaderProps {
   title?: string;
@@ -14,7 +21,7 @@ export interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ title = '칠 플레이스', showBack, onBack }) => {
   // 로그인 상태/유저명 표시
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   useEffect(() => {
     getCurrentUser().then(({ user }) => setUser(user));
   }, []);
@@ -43,7 +50,12 @@ const Header: React.FC<HeaderProps> = ({ title = '칠 플레이스', showBack, o
             <NotificationBell userId={user.id} />
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600 dark:text-gray-300 hidden sm:inline">{user.email}</span>
-              <button className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" onClick={signOut}>로그아웃</button>
+              <button 
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" 
+                onClick={() => signOut()}
+              >
+                로그아웃
+              </button>
             </div>
           </>
         ) : (

@@ -138,3 +138,38 @@ textarea {
     -webkit-line-clamp: 3;
   }
 }
+
+/* 마커 펄스 애니메이션 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+/* 글래스모피즘 효과 */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.glass-dark {
+  background: rgba(31, 41, 55, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(75, 85, 99, 0.18);
+}
+
+/* 호버 효과 */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}

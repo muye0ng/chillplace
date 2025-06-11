@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -22,27 +23,32 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [hasStarted, setHasStarted] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
   const maxLength = 50;
   const remainingChars = maxLength - review.length;
 
-  useEffect(() => {
-    if (isOpen && !hasStarted) {
-      // 모달이 열리면 3초 후 자동 시작
-      const startTimer = setTimeout(() => {
-        setHasStarted(true);
-        setIsActive(true);
-        textareaRef.current?.focus();
-      }, 3000);
-
-      return () => clearTimeout(startTimer);
+  const handleClose = useCallback(() => {
+    setReview('');
+    setTimeLeft(30);
+    setIsActive(false);
+    setHasStarted(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
-  }, [isOpen, hasStarted]);
+    onClose();
+  }, [onClose]);
 
+  const handleSubmit = useCallback(() => {
+    if (review.trim()) {
+      onSubmit(review.trim());
+    }
+    handleClose();
+  }, [review, onSubmit, handleClose]);
+
+  // 타이머 관리
   useEffect(() => {
     if (isActive && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
+        setTimeLeft(prev => {
           if (prev <= 1) {
             setIsActive(false);
             handleSubmit();
@@ -62,25 +68,36 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, handleSubmit]);
 
-  const handleSubmit = () => {
-    if (review.trim()) {
-      onSubmit(review.trim());
-    }
-    handleClose();
-  };
+  // 키보드 이벤트 처리
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        handleSubmit();
+      }
+    };
 
-  const handleClose = () => {
-    setReview('');
-    setTimeLeft(30);
-    setIsActive(false);
-    setHasStarted(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
     }
-    onClose();
-  };
+  }, [isOpen, handleClose, handleSubmit]);
+
+  useEffect(() => {
+    if (isOpen && !hasStarted) {
+      // 모달이 열리면 3초 후 자동 시작
+      const startTimer = setTimeout(() => {
+        setHasStarted(true);
+        setIsActive(true);
+        textareaRef.current?.focus();
+      }, 3000);
+
+      return () => clearTimeout(startTimer);
+    }
+  }, [isOpen, hasStarted]);
 
   const handleSkip = () => {
     handleClose();
@@ -145,10 +162,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
           >
             {/* 헤더 */}
             <div className="relative h-32 overflow-hidden">
-              <img 
-                src={getImageSrc()} 
+              <Image
+                src={getImageSrc()}
                 alt={placeName}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 448px"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">

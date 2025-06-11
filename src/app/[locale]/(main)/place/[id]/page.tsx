@@ -19,6 +19,8 @@ import Image from 'next/image';
 import { getCurrentUser } from '@/lib/supabase/auth';
 import { createNotification } from '@/lib/supabase/notifications';
 import { useSWRConfig } from 'swr';
+import SignupPromptModal from '@/components/auth/SignupPromptModal';
+import { useAuthGuard } from '@/lib/hooks/useAuthGuard';
 dayjs.extend(relativeTime);
 
 const PlaceDetailPage = () => {
@@ -46,6 +48,13 @@ const PlaceDetailPage = () => {
   // 별점별 필터 상태 추가
   const [ratingFilter, setRatingFilter] = useState<number | null>(null);
 
+  // 권한 관리 추가
+  const { 
+    isAuthenticated, 
+    showSignupModal, 
+    setShowSignupModal 
+  } = useAuthGuard();
+
   // 리뷰 작성자 닉네임 조회
   useEffect(() => {
     if (reviews.length === 0) return;
@@ -55,33 +64,7 @@ const PlaceDetailPage = () => {
     });
   }, [reviews]);
 
-  // 리뷰 등록 핸들러
-  const handleSubmit = useCallback(async (content: string, rating: number, image?: File) => {
-    setSubmitting(true);
-    let imageUrl: string | undefined = undefined;
-    try {
-      if (image) {
-        imageUrl = await uploadReviewImage(image, placeId);
-      }
-      await createReview(placeId, content, rating, imageUrl);
-      // 리뷰 등록 알림 생성 (예시: 장소 주인/관리자에게, 본인 제외)
-      const { user } = await getCurrentUser();
-      if (place && user && place.id !== user.id) {
-        await createNotification(
-          place.id, // 실제 서비스에서는 place.owner_id 등으로 수정 필요
-          'review',
-          `${place.name}에 새로운 리뷰가 등록되었습니다.`,
-          `/ko/place/${place.id}`
-        );
-      }
-      await mutateReviews(); // SWR 데이터 즉시 갱신
-      setSnackbar({ open: true, message: '리뷰가 등록되었습니다.', type: 'success' });
-    } catch {
-      setSnackbar({ open: true, message: '리뷰 등록 중 오류가 발생했습니다.', type: 'error' });
-    } finally {
-      setSubmitting(false);
-    }
-  }, [placeId, place, mutateReviews]);
+
 
   // 실제로 보여줄 리뷰 목록 (SWR 데이터만 사용)
   const displayReviews = reviews;
@@ -218,6 +201,69 @@ const PlaceDetailPage = () => {
     await checkSupabaseConnection();
   };
 
+  // 투표 핸들러 수정
+  const handleVote = async (voteType: 'like' | 'no') => {
+    // 비회원 체크
+    if (!isAuthenticated) {
+      setShowSignupModal(true);
+      return;
+    }
+    
+    try {
+      await votePlace(place!.id, voteType);
+      setSnackbar({ 
+        open: true, 
+        message: voteType === 'like' ? '좋아요가 반영되었습니다.' : '별로예요가 반영되었습니다.', 
+        type: 'success' 
+      });
+    } catch {
+      setSnackbar({ 
+        open: true, 
+        message: '투표 중 오류가 발생했습니다.', 
+        type: 'error' 
+      });
+    }
+  };
+
+  // 리뷰 작성 체크 함수 수정
+  const handleReviewSubmit = useCallback(async (content: string, rating: number, imageFile?: File) => {
+    // 비회원 체크
+    if (!isAuthenticated) {
+      setShowSignupModal(true);
+      return;
+    }
+    
+    if (!content || content.length < 10) {
+      setSnackbar({ open: true, message: '리뷰는 최소 10자 이상 작성해주세요.', type: 'error' });
+      return;
+    }
+
+    setSubmitting(true);
+    let imageUrl: string | undefined = undefined;
+    try {
+      if (imageFile) {
+        imageUrl = await uploadReviewImage(imageFile, placeId);
+      }
+      await createReview(placeId, content, rating, imageUrl);
+      // 리뷰 등록 알림 생성 (예시: 장소 주인/관리자에게, 본인 제외)
+      const currentUser = await getCurrentUser();
+      if (place && currentUser && place.id !== currentUser.id) {
+        await createNotification(
+          place.id, // 실제 서비스에서는 place.owner_id 등으로 수정 필요
+          'review',
+          `${place.name}에 새로운 리뷰가 등록되었습니다.`,
+          `/ko/place/${place.id}`
+        );
+      }
+      await mutateReviews(); // SWR 데이터 즉시 갱신
+      setSnackbar({ open: true, message: '리뷰가 등록되었습니다.', type: 'success' });
+    } catch {
+      setSnackbar({ open: true, message: '리뷰 등록 중 오류가 발생했습니다.', type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }, [placeId, place, mutateReviews, isAuthenticated]);
+
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
       {/* 상단 대표 이미지 */}
@@ -335,27 +381,13 @@ const PlaceDetailPage = () => {
           <div className="flex gap-2 mt-2">
             <button
               className="flex-1 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold transition"
-              onClick={async () => {
-                try {
-                  await votePlace(place.id, 'like');
-                  setSnackbar({ open: true, message: '좋아요가 반영되었습니다.', type: 'success' });
-                } catch {
-                  setSnackbar({ open: true, message: '투표 중 오류가 발생했습니다.', type: 'error' });
-                }
-              }}
+              onClick={() => handleVote('like')}
             >
               👍 좋아요
             </button>
             <button
               className="flex-1 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 font-bold transition"
-              onClick={async () => {
-                try {
-                  await votePlace(place.id, 'no');
-                  setSnackbar({ open: true, message: '별로예요가 반영되었습니다.', type: 'success' });
-                } catch {
-                  setSnackbar({ open: true, message: '투표 중 오류가 발생했습니다.', type: 'error' });
-                }
-              }}
+              onClick={() => handleVote('no')}
             >
               👎 별로예요
             </button>
@@ -429,7 +461,7 @@ const PlaceDetailPage = () => {
           <h3 className="text-lg font-bold mb-3 text-gray-800 dark:text-gray-200">리뷰 작성</h3>
           <ReviewForm 
             placeId={placeId} 
-            onSubmit={handleSubmit} 
+            onSubmit={handleReviewSubmit} 
             timeLimit={30} 
             charLimit={50} 
           />
@@ -593,6 +625,13 @@ const PlaceDetailPage = () => {
           </div>
         </div>
       )}
+
+      {/* 회원가입 유도 모달 */}
+      <SignupPromptModal
+        isOpen={showSignupModal}
+        onClose={() => setShowSignupModal(false)}
+        action="투표 및 리뷰 작성"
+      />
     </main>
   );
 };

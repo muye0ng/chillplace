@@ -1,6 +1,53 @@
--- 사용자 프로필 (public.users 확장)
+-- NextAuth.js 호환 테이블들 (public 스키마)
+CREATE TABLE IF NOT EXISTS users (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT,
+  email TEXT UNIQUE,
+  "emailVerified" TIMESTAMPTZ,
+  image TEXT,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  "userId" UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  "providerAccountId" TEXT NOT NULL,
+  "refresh_token" TEXT,
+  "access_token" TEXT,
+  "expires_at" BIGINT,
+  "token_type" TEXT,
+  scope TEXT,
+  "id_token" TEXT,
+  "session_state" TEXT,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(provider, "providerAccountId")
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  "sessionToken" TEXT NOT NULL UNIQUE,
+  "userId" UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires TIMESTAMPTZ NOT NULL,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS verification_tokens (
+  identifier TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  expires TIMESTAMPTZ NOT NULL,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (identifier, token)
+);
+
+-- 사용자 프로필 (users 확장)
 CREATE TABLE profiles (
-  id UUID REFERENCES public.users PRIMARY KEY, -- NextAuth.js public.users와 연동
+  id UUID REFERENCES users PRIMARY KEY, -- NextAuth.js users와 연동
   username TEXT UNIQUE, -- 닉네임
   full_name TEXT, -- 전체 이름
   avatar_url TEXT, -- 프로필 이미지
@@ -111,21 +158,27 @@ ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own favorites" ON favorites FOR ALL USING (user_id::text = current_setting('request.jwt.claims')::json->>'sub');
 
 -- NextAuth.js 사용자 생성 시 프로필 자동 생성 트리거 함수
-CREATE OR REPLACE FUNCTION public.handle_nextauth_user() 
+CREATE OR REPLACE FUNCTION handle_nextauth_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, username, full_name, avatar_url)
+  INSERT INTO profiles (id, username, full_name, avatar_url)
   VALUES (
     NEW.id,
     COALESCE(NEW.name, split_part(NEW.email, '@', 1)),
     COALESCE(NEW.name, NEW.email),
     COALESCE(NEW.image, '')
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = COALESCE(NEW.name, split_part(NEW.email, '@', 1)),
+    full_name = COALESCE(NEW.name, NEW.email),
+    avatar_url = COALESCE(NEW.image, ''),
+    updated_at = NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- NextAuth.js 사용자 생성 시 자동으로 프로필 생성하는 트리거
+DROP TRIGGER IF EXISTS on_nextauth_user_created ON users;
 CREATE TRIGGER on_nextauth_user_created
-  AFTER INSERT ON public.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_nextauth_user(); 
+  AFTER INSERT ON users
+  FOR EACH ROW EXECUTE PROCEDURE handle_nextauth_user(); 

@@ -170,214 +170,69 @@ export async function POST(request: NextRequest) {
 
     const userId = (session.user as { id?: string })?.id;
     
-    // 1. 모든 소셜 계정 연결 해제
-    if (userId) {
-      try {
-        console.log('🔍 사용자 ID로 OAuth 계정 정보 조회 중:', userId);
-        
-        // NextAuth 계정 정보에서 모든 OAuth 제공자 확인 (next_auth 스키마)
-        let { data: userAccounts, error: accountsError } = await supabase
-          .schema('next_auth')
-          .from('accounts')
-          .select('provider, access_token, refresh_token, providerAccountId')
-          .eq('userId', userId);
+    // 1. 계정 정보 삭제
+    const { error: accountError } = await supabase
+      .schema('next_auth')
+      .from('accounts')
+      .delete()
+      .eq('userId', userId);
 
-        console.log('📊 next_auth 스키마에서 조회된 계정 정보:', {
-          accountsCount: userAccounts?.length || 0,
-          accounts: userAccounts,
-          error: accountsError
-        });
-
-        // next_auth 스키마에서 못 찾았으면 public 스키마에서도 시도
-        if ((!userAccounts || userAccounts.length === 0) && !accountsError) {
-          console.log('🔄 public 스키마에서도 계정 정보 조회 시도...');
-          
-          const { data: publicAccounts, error: publicError } = await supabase
-            .from('accounts')
-            .select('provider, access_token, refresh_token, providerAccountId')
-            .eq('userId', userId);
-            
-          console.log('📊 public 스키마에서 조회된 계정 정보:', {
-            accountsCount: publicAccounts?.length || 0,
-            accounts: publicAccounts,
-            error: publicError
-          });
-          
-          if (publicAccounts && publicAccounts.length > 0) {
-            userAccounts = publicAccounts;
-            accountsError = publicError;
-          }
-        }
-
-        if (accountsError) {
-          console.error('❌ 계정 정보 조회 오류:', accountsError);
-        }
-
-        if (userAccounts && userAccounts.length > 0) {
-          console.log('✅ OAuth 계정 발견, 연결 해제 시작...');
-          
-          for (const account of userAccounts) {
-            console.log(`🔗 ${account.provider} 계정 처리 중:`, {
-              provider: account.provider,
-              hasAccessToken: !!account.access_token,
-              hasRefreshToken: !!account.refresh_token,
-              providerAccountId: account.providerAccountId
-            });
-            
-            try {
-              switch (account.provider) {
-                case 'kakao':
-                  if (account.access_token) {
-                    console.log('🔗 카카오 계정 연결 해제 중...');
-                    console.log('📝 카카오 access_token:', account.access_token ? '토큰 있음' : '토큰 없음');
-                    
-                    let currentAccessToken = account.access_token;
-                    
-                    try {
-                      // 첫 번째 시도: 기존 access_token 사용
-                      let kakaoResponse = await fetch('https://kapi.kakao.com/v1/user/unlink', {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${currentAccessToken}`,
-                          'Content-Type': 'application/x-www-form-urlencoded'
-                        }
-                      });
-                      
-                      console.log('📊 카카오 API 응답 상태:', kakaoResponse.status);
-                      
-                      // 토큰 만료 시 refresh_token으로 재시도
-                      if (kakaoResponse.status === 401 && account.refresh_token) {
-                        console.log('🔄 카카오 토큰 만료 - refresh_token으로 갱신 시도...');
-                        
-                        try {
-                          const refreshResponse = await fetch('https://kauth.kakao.com/oauth/token', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/x-www-form-urlencoded'
-                            },
-                            body: new URLSearchParams({
-                              grant_type: 'refresh_token',
-                              client_id: process.env.AUTH_KAKAO_ID!,
-                              refresh_token: account.refresh_token
-                            })
-                          });
-                          
-                          if (refreshResponse.ok) {
-                            const refreshData = await refreshResponse.json();
-                            currentAccessToken = refreshData.access_token;
-                            console.log('✅ 카카오 토큰 갱신 성공 - Unlink 재시도');
-                            
-                            // 새 토큰으로 Unlink 재시도
-                            kakaoResponse = await fetch('https://kapi.kakao.com/v1/user/unlink', {
-                              method: 'POST',
-                              headers: {
-                                'Authorization': `Bearer ${currentAccessToken}`,
-                                'Content-Type': 'application/x-www-form-urlencoded'
-                              }
-                            });
-                          } else {
-                            console.log('❌ 카카오 토큰 갱신 실패');
-                          }
-                        } catch (refreshError) {
-                          console.error('💥 카카오 토큰 갱신 오류:', refreshError);
-                        }
-                      }
-                      
-                      console.log('📊 카카오 API 최종 응답 상태:', kakaoResponse.status);
-                      console.log('📊 카카오 API 응답 헤더:', Object.fromEntries(kakaoResponse.headers.entries()));
-                      
-                      if (kakaoResponse.ok) {
-                        const responseData = await kakaoResponse.json();
-                        console.log('✅ 카카오 계정 연결 해제 완료:', responseData);
-                      } else {
-                        const errorText = await kakaoResponse.text();
-                        console.log('❌ 카카오 연결 해제 실패:', {
-                          status: kakaoResponse.status,
-                          statusText: kakaoResponse.statusText,
-                          body: errorText
-                        });
-                        
-                        // 토큰이 만료되었거나 유효하지 않은 경우에도 탈퇴는 진행
-                        if (kakaoResponse.status === 401) {
-                          console.log('⚠️ 카카오 토큰 만료/무효 - 계속 진행');
-                        }
-                      }
-                    } catch (kakaoError) {
-                      console.error('💥 카카오 API 호출 오류:', kakaoError);
-                    }
-                  } else {
-                    console.log('⚠️ 카카오 access_token이 없음 - 연결 해제 건너뜀');
-                  }
-                  break;
-
-                case 'google':
-                  if (account.access_token) {
-                    console.log('🔗 구글 계정 연결 해제 중...');
-                    const googleResponse = await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${account.access_token}`, {
-                      method: 'POST'
-                    });
-                    
-                    if (googleResponse.ok) {
-                      console.log('✅ 구글 계정 연결 해제 완료');
-                    } else {
-                      console.log('⚠️ 구글 연결 해제 실패 (이미 해제되었을 수 있음)');
-                    }
-                  }
-                  break;
-
-                case 'naver':
-                  if (account.access_token) {
-                    console.log('🔗 네이버 계정 연결 해제 중...');
-                    const naverResponse = await fetch('https://nid.naver.com/oauth2.0/token', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                      },
-                      body: new URLSearchParams({
-                        grant_type: 'delete',
-                        client_id: process.env.AUTH_NAVER_ID!,
-                        client_secret: process.env.AUTH_NAVER_SECRET!,
-                        access_token: account.access_token
-                      })
-                    });
-                    
-                    if (naverResponse.ok) {
-                      console.log('✅ 네이버 계정 연결 해제 완료');
-                    } else {
-                      console.log('⚠️ 네이버 연결 해제 실패 (이미 해제되었을 수 있음)');
-                    }
-                  }
-                  break;
-
-                default:
-                  console.log(`⚠️ 알 수 없는 OAuth 제공자: ${account.provider}`);
-              }
-            } catch (unlinkError) {
-              console.log(`⚠️ ${account.provider} 연결 해제 처리 중 오류 (계속 진행):`, unlinkError);
-            }
-          }
-        } else {
-          console.log('⚠️ OAuth 계정 정보 없음 - 연결 해제 건너뜀');
-        }
-      } catch (unlinkError) {
-        console.log('⚠️ OAuth 연결 해제 처리 중 오류 (계속 진행):', unlinkError);
-      }
-    } else {
-      console.log('⚠️ 사용자 ID 없음 - OAuth 연결 해제 건너뜀');
+    if (accountError) {
+      console.error('❌ 계정 정보 삭제 실패:', accountError);
+      return NextResponse.json(
+        { message: '계정 정보 삭제 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
     }
 
-    // 2. 데이터베이스에서 사용자 삭제 (public + next_auth 스키마 둘 다)
-    const { data, error } = await supabase.rpc('delete_user_by_email', {
-      user_email: session.user.email
-    })
-    
-    if (error) throw error
+    // 2. 사용자 정보 삭제
+    const { error: userError } = await supabase
+      .schema('next_auth')
+      .from('users')
+      .delete()
+      .eq('id', userId);
 
-    console.log('🗑️ 완전한 회원탈퇴 처리 완료:', data)
+    if (userError) {
+      console.error('❌ 회원탈퇴 처리 오류:', userError);
+      return NextResponse.json(
+        { message: '회원탈퇴 처리 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    // 3. 프로필 정보 삭제
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profileError) {
+      console.error('❌ 프로필 삭제 실패:', profileError);
+      return NextResponse.json(
+        { message: '프로필 삭제 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    // 4. 동의 정보 삭제
+    const { error: consentError } = await supabase
+      .from('consents')
+      .delete()
+      .eq('email', session.user.email);
+
+    if (consentError) {
+      console.error('❌ 동의 정보 삭제 실패:', consentError);
+      return NextResponse.json(
+        { message: '동의 정보 삭제 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
+    }
+
+    console.log('🗑️ 완전한 회원탈퇴 처리 완료')
 
     return NextResponse.json({
       success: true,
-      message: data,
+      message: '회원탈퇴가 완료되었습니다.',
       deletedUser: session.user.email
     })
 

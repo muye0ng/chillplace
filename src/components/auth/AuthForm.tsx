@@ -29,6 +29,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthSuccess }) => {
       console.log(`${provider} 로그인 결과:`, result);
       
       if (result?.error) {
+        // OAuth 계정 생성 오류인 경우 회원가입 페이지로 이동
+        if (result.error === 'OAuthCreateAccount') {
+          console.log('🚀 OAuth 계정 생성 오류 감지 - 회원가입 페이지로 이동');
+          window.location.href = '/signup';
+          return;
+        }
+        
         let errorMessage = `${provider} 로그인 오류: ${result.error}`;
         
         // 카카오 로그인 특정 오류 처리

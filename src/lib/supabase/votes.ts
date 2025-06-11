@@ -1,11 +1,36 @@
 // 투표 관련 Supabase 함수 모음입니다.
 // Like/No 투표 등록, 조회 등 함수 뼈대 제공
 import { supabase } from './client';
+import { addFavorite, removeFavorite } from './favorites';
 
-// 투표 등록
+// 투표 등록 (좋아요 시 자동 즐겨찾기 추가)
 export async function votePlace(placeId: string, voteType: 'like' | 'no') {
-  // 실제 구현은 supabase.from('votes').upsert() 등 사용
-  return supabase.from('votes').upsert([{ place_id: placeId, vote_type: voteType }], { onConflict: 'user_id,place_id' });
+  // 먼저 기존 투표 확인
+  const { data: existingVote } = await supabase
+    .from('votes')
+    .select('vote_type')
+    .eq('place_id', placeId)
+    .single();
+  
+  // 투표 등록/업데이트
+  const { data, error } = await supabase
+    .from('votes')
+    .upsert([{ place_id: placeId, vote_type: voteType }], { 
+      onConflict: 'user_id,place_id' 
+    });
+  
+  if (error) return { data, error };
+  
+  // 좋아요 투표 시 자동으로 즐겨찾기 추가
+  if (voteType === 'like') {
+    await addFavorite(placeId);
+  } 
+  // 기존이 좋아요였는데 싫어요로 변경하면 즐겨찾기 해제
+  else if (voteType === 'no' && existingVote?.vote_type === 'like') {
+    await removeFavorite(placeId);
+  }
+  
+  return { data, error };
 }
 
 // 내 투표 조회
